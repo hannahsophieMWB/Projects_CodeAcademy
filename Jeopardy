@@ -1,0 +1,86 @@
+import pandas as pd
+pd.set_option('display.max_colwidth', -1)
+import datetime
+# Load data
+jeopardy = pd.read_csv('jeopardy.csv')
+jeopardy = pd.DataFrame(jeopardy)
+#print(jeopardy.head())
+
+# 2
+# print the column names
+for col in jeopardy.columns:
+   # print(col)
+
+# strip the white space using lambda
+  df = jeopardy.rename(columns=lambda x: x.strip())
+# rename columns if you like
+df.rename(columns={
+        'Air Date': 'airdate'},
+        inplace=True)
+
+for col in df.columns:
+    print(col)
+
+# 3
+#print(df.Question)
+
+
+cols_to_filter = ['Question']
+search_values = ['king', 'King', 'england', 'England']
+
+patt = '|'.join(search_values)
+
+filter= df[cols_to_filter].apply(lambda x: x.str.contains(patt)).any(1)
+
+filtered = df[filter]
+print(df[filter]) # we get 156 rows searching for king or england
+# print(df['Value'])
+
+# 5
+df['Value_float'] = df['Value'].str.strip('$')
+
+df['Value_float'] = pd.to_numeric(df['Value_float'],errors='coerce')
+# print(df['Value_float'])
+#print(df[filter].Value_float.mean())
+# Mean: 669.38
+
+# 6
+# Q: Write a function that returns the count of the unique answers to all of the questions in a dataset
+filterd = df[df['Question'].str.contains('|'.join(['king','england']))]
+
+# group by the Question column
+group = filterd.groupby('Question')
+
+# count the unique values in filtered dataset for the column "Answer"
+df2 = group.apply(lambda x: x['Answer'].unique())
+print(df2)
+
+# 7
+# Make a filter function consistent of two inputs which takes all words (subsetted) and apply filter on column Question
+def word_filter(dataset, words):
+    filter = lambda x: all(word.lower() in x.lower() for word in words)
+    return dataset.loc[dataset["Question"].apply(filter)]
+
+# make new columns 'date' which transforms airdate into datetime format 
+df['date'] = df.airdate.apply(lambda x: pd.to_datetime(x))
+
+#Computer use in 90s vs 2000s
+filtered_by_computer = word_filter(df, ['computer'])
+filtered_by_computer_90s = filtered_by_computer[(filtered_by_computer.date > datetime.datetime(1990, 1, 1)) & (filtered_by_computer.date < datetime.datetime(1999, 12, 31))]
+filtered_by_computer_00s = filtered_by_computer[(filtered_by_computer.date > datetime.datetime(2000, 1, 1)) & (filtered_by_computer.date < datetime.datetime(2009, 12, 31))]
+#267 questions including computer in 00s and 98 in 90s
+print(filtered_by_computer_90s)
+
+# Connection between round and jeopardy: Let's first check out the two columns
+print(df[['Round', 'Category']])
+
+# 
+#Computer use in Jeopardy! and Double Jeopardy!
+def unique_answer(dataset, words):
+    filtered_data = word_filter(dataset, words)
+    unique_column = filtered_data.groupby('Category').value.count().reset_index()
+    return unique_column.sort_values(by=['Round'], ascending=False)
+
+#Tests the unique answer formula 
+df2 = unique_answer(df, ['Jeopardy!'])
+
